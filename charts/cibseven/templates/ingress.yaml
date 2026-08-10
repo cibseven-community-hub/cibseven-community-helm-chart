@@ -1,13 +1,13 @@
 {{- if .Values.ingress.enabled -}}
-{{- $apiVersion := include "camunda-bpm-platform.ingress.apiVersion" . -}}
-{{- $fullName := include "camunda-bpm-platform.fullname" . -}}
+{{- $apiVersion := include "cibseven.ingress.apiVersion" . -}}
+{{- $fullName := include "cibseven.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
 apiVersion: {{ $apiVersion }}
 kind: Ingress
 metadata:
   name: {{ $fullName }}
   labels:
-    {{- include "camunda-bpm-platform.labels" . | nindent 4 }}
+    {{- include "cibseven.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

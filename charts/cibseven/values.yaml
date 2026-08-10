@@ -1,4 +1,4 @@
-# Default values for camunda-bpm-platform.
+# Default values for cibseven.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -20,15 +20,19 @@ commonLabels: {}
 #  my-custom-label: my-value
 
 image:
-  repository: camunda/camunda-bpm-platform
-  tag: latest
+  # Defaults to the CIB seven fork of the Camunda 7 engine.
+  # The `run-*` distribution is a Spring Boot bundle that ships the
+  # cibseven-webclient (Cockpit/Tasklist/Admin) in-process. Use
+  # `tomcat-latest` / `wildfly-latest` for the application-server distros.
+  repository: cibseven/cibseven
+  tag: run-latest
   pullPolicy: IfNotPresent
   pullSecrets: []
   command: []
   args: []
 
 # Extra environment variables to customize the deployment.
-# For more details: https://github.com/camunda/docker-camunda-bpm-platform
+# For more details: https://github.com/cibseven/cibseven-docker
 extraEnvs: []
 # Example:
 # - name: DB_VALIDATE_ON_BORROW
@@ -122,13 +126,13 @@ ingress:
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   hosts:
-    - host: camunda-bpm-platform.local
+    - host: cibseven.local
       paths:
         - /
   tls: []
-  #  - secretName: camunda-bpm-platform-tls
+  #  - secretName: cibseven-tls
   #    hosts:
-  #      - camunda-bpm-platform.local
+  #      - cibseven.local
 
 # Recreate the pods on any install, no matter if anything has changed.
 # Which is useful to recreate the pod if the image tag has not changed.
