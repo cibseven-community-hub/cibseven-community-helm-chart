@@ -25,8 +25,6 @@ Once a released chart is published to the Helm registry, install it from there i
 Using this custom values file the chart will:
 
 * Use a custom name for deployment.
-* Deploy 3 instances of the engine's `run` distribution with `REST API` only enabled
-  (that means no `Webapps` nor `Swagger UI` will be enabled).
 * Use PostgreSQL as an external database (it assumes that the database `process-engine` is already created
   and the secret `cibseven-postgresql-credentials` has the mandatory data `DB_USERNAME` and `DB_PASSWORD`).
 * Set custom config for `readinessProbe` and checking an endpoint that queries the database
@@ -115,7 +113,7 @@ extraEnvs:
 
 #### Debugging
 
-Enable debugging in the engine container by setting:
+Enable debugging in the CIB seven container by setting:
 
 ```yaml
 general:
@@ -163,9 +161,6 @@ list.
 The `run-*` distribution is a Spring Boot bundle that includes the webclient (Cockpit/Tasklist/Admin)
 in-process. Switch to `tomcat-latest` or `wildfly-latest` if you prefer an application-server distro.
 
-Users who want the upstream Camunda image instead of the CIB seven fork can override
-`image.repository: camunda/camunda-bpm-platform`.
-
 `repository` and `tag` use [`tpl`](https://helm.sh/docs/howto/charts_tips_and_tricks/#using-the-tpl-function) function, it allows you to do templating:
 
 ```yaml
@@ -176,9 +171,9 @@ image:
 ### Database
 
 One of the [supported databases](https://docs.camunda.org/manual/latest/introduction/supported-environments/#databases)
-could be used with the engine.
+could be used with CIB seven.
 
-The H2 database is used by default which works fine if you just want to test the engine.
+The H2 database is used by default which works fine if you just want to test CIB seven.
 But since the database is embedded, only 1 deployment replica could be used.
 
 For real-world workloads, an external database like PostgreSQL should be used.
@@ -186,7 +181,7 @@ The following is an example of using PostgreSQL as an external database.
 
 First, assuming that you have a PostgreSQL system up and running with service and port
 `cibseven-postgresql:5432`, also the database `process-engine` is created and you have its credentials,
-create a secret has database credentials which will be used later by the engine deployment:
+create a secret has database credentials which will be used later by CIB seven deployment:
 
 ```sh
 $ kubectl create secret generic         \
