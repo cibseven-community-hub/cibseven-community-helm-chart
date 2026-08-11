@@ -12,7 +12,7 @@ keywords:
   - process-engine
   - workflow
   - dmn
-icon: https://docs.camunda.org/get-started/img/Camunda-Circle.svg
+icon: https://cibseven.org/wp-content/uploads/2023/08/CIB-seven-logo.svg
 home: https://github.com/cibseven
 sources:
   - https://github.com/cibseven-community-hub/cibseven-community-helm-chart/tree/main/charts/cibseven
