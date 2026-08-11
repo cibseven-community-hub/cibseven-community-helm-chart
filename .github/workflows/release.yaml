@@ -6,6 +6,13 @@ on:
   # Allow to run the workflow from GitHub UI and other workflows.
   workflow_dispatch:
 
+# `chart-releaser-action` commits packaged charts + index.yaml to `gh-pages`,
+# and the final `commit-charts-changelog` job pushes the regenerated CHANGELOG
+# back to `main`. Both need `contents: write`; the org / repo default token
+# permissions may be read-only on newer repos, so declare explicitly.
+permissions:
+  contents: write
+
 env:
   HELM_VERSION: 3.12.0
 
@@ -57,6 +64,9 @@ jobs:
 
           # TODO: Bundle all of that logic in a Github Action to make it easy to share.
           for chart_file in ${{ needs.find-charts-to-release.outputs.modified-charts-files }}; do
+              # Skip files that no longer exist (e.g. a chart directory rename
+              # produces both a deleted and an added Chart.yaml in the diff).
+              [[ -f "${chart_file}" ]] || continue
               chart_name=$(grep -Po "(?<=^name: ).+" ${chart_file})
               chart_version=$(grep -Po "(?<=^version: ).+" ${chart_file})
               chart_tag="${chart_name}-${chart_version}"
@@ -176,6 +186,8 @@ jobs:
 
           # Commit changes locally.
           for chart_file in ${released_charts_files}; do
+              # Skip files that no longer exist (see comment in generate-charts-changelog).
+              [[ -f "${chart_file}" ]] || continue
               chart_name=$(grep -Po "(?<=^name: ).+" ${chart_file})
               chart_version=$(grep -Po "(?<=^version: ).+" ${chart_file})
               chart_path="charts/${chart_name}"
