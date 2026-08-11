@@ -206,6 +206,43 @@ database:
 
 **Please note**, this Helm chart doesn't manage any external database, it just uses what's configured.
 
+### Webclient / Spring Boot configuration
+
+The `cibseven/cibseven:run-*` image is a Spring Boot process that serves both the classic
+Camunda webapps at `/camunda/` and the modern cibseven-webclient at `/webapp/` from the same
+JVM. Any property supported by the upstream
+[cibseven-webclient `application.yaml`](https://github.com/cibseven/cibseven-webclient/blob/main/helm/cibseven-webclient/values.yaml)
+can be overridden here — LDAP, SSO, UI toggles, branding, feature flags, etc.
+
+Provide the overrides as raw YAML under `webclient.applicationYaml`. When non-empty, the chart
+renders it into a `ConfigMap`, mounts it at `/opt/cibseven/config/application.yaml`, and sets
+`SPRING_CONFIG_ADDITIONAL_LOCATION` on the container so Spring Boot merges it on top of the
+image's built-in defaults. Helm expressions inside the block are evaluated (via `tpl`) so you
+can reference other values.
+
+```yaml
+webclient:
+  applicationYaml: |
+    cibseven:
+      webclient:
+        theme: cib
+        productNamePageTitle: "My CIB seven"
+        ldap:
+          url: ldap://ldap.example.com:389
+          folder: dc=example,dc=com
+          userNameAttribute: uid
+        authentication:
+          tokenValidMinutes: 60
+    ui:
+      supportedLanguages: [en, de]
+      layout:
+        showFeedbackButton: false
+```
+
+For one-off env-var overrides (Spring Boot's `SPRING_APPLICATION_JSON`, `CIBSEVEN_WEBCLIENT_*`
+naming, or anything else), keep using `extraEnvs`. Env vars win over `applicationYaml`, which in
+turn wins over the image's baked-in defaults.
+
 ### Metrics
 
 Enable Prometheus metrics for the engine by setting the following in the values file:

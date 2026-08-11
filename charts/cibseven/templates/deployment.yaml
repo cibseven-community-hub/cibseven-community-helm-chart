@@ -69,6 +69,10 @@ spec:
               value: "{{ .Values.database.driver }}"
             - name: DB_URL
               value: "{{ .Values.database.url }}"
+            {{- if .Values.webclient.applicationYaml }}
+            - name: SPRING_CONFIG_ADDITIONAL_LOCATION
+              value: "file:/opt/cibseven/config/"
+            {{- end }}
             {{- if .Values.database.credentialsSecretEnabled }}
             - name: DB_USERNAME
               valueFrom:
@@ -115,6 +119,11 @@ spec:
             - name: {{ $fullName }}-database-h2
               mountPath: /camunda/camunda-h2-dbs
             {{- end }}
+            {{- if .Values.webclient.applicationYaml }}
+            - name: webclient-config
+              mountPath: /opt/cibseven/config
+              readOnly: true
+            {{- end }}
             {{- if .Values.extraVolumeMounts }}
               {{- tpl (toYaml .Values.extraVolumeMounts) . | nindent 12 }}
             {{- end }}
@@ -125,6 +134,11 @@ spec:
         - name: {{ $fullName }}-database-h2
           persistentVolumeClaim:
             claimName: {{ $fullName }}-database-h2
+        {{- end }}
+        {{- if .Values.webclient.applicationYaml }}
+        - name: webclient-config
+          configMap:
+            name: {{ $fullName }}-webclient-config
         {{- end -}}
         {{- if .Values.extraVolumes }}
           {{- tpl (toYaml .Values.extraVolumes) . | nindent 8 }}

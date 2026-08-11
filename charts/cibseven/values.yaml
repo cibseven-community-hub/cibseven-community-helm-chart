@@ -189,3 +189,42 @@ affinity: {}
 
 tests:
   annotations: {}
+
+# ------------------------------------------------------------------------------
+# Webclient / Spring Boot application configuration
+#
+# The `cibseven/cibseven:run-*` image is a Spring Boot process that serves both
+# the classic Camunda webapps at /camunda/ and the modern cibseven-webclient at
+# /webapp/ from the same JVM. Any property supported by the upstream
+# cibseven-webclient application.yaml can be overridden here — LDAP, SSO,
+# UI toggles, branding, feature flags, etc. See the upstream reference for the
+# full list of keys:
+#   https://github.com/cibseven/cibseven-webclient/blob/main/helm/cibseven-webclient/values.yaml
+#
+# When `applicationYaml` is non-empty the chart renders it verbatim into a
+# ConfigMap, mounts it at /opt/cibseven/config/application.yaml, and sets
+# SPRING_CONFIG_ADDITIONAL_LOCATION on the engine container so Spring Boot
+# merges it on top of the image's built-in defaults.
+#
+# `tpl` is applied so Helm expressions like `{{ .Release.Name }}` work here.
+#
+# Example:
+#   webclient:
+#     applicationYaml: |
+#       cibseven:
+#         webclient:
+#           theme: cib
+#           productNamePageTitle: "My CIB seven"
+#           ldap:
+#             url: ldap://ldap.example.com:389
+#             folder: dc=example,dc=com
+#             userNameAttribute: uid
+#           authentication:
+#             tokenValidMinutes: 60
+#         ui:
+#           supportedLanguages: [en, de]
+#           layout:
+#             showFeedbackButton: false
+# ------------------------------------------------------------------------------
+webclient:
+  applicationYaml: ""

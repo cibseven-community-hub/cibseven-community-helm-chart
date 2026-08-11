@@ -90,7 +90,7 @@ Check if the deployment will have volumes
 Note that Helm template always retruns string, so this is not really a bool.
 */}}
 {{- define "cibseven.withVolumes" -}}
-{{ if or (eq (include "cibseven.h2DatabaseIsUsed" .) "true") (not (empty .Values.extraVolumeMounts)) (not (empty .Values.extraVolumes)) -}}
+{{ if or (eq (include "cibseven.h2DatabaseIsUsed" .) "true") (not (empty .Values.extraVolumeMounts)) (not (empty .Values.extraVolumes)) (not (empty .Values.webclient.applicationYaml)) -}}
 true
 {{- else -}}
 false
