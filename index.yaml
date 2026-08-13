@@ -2,6 +2,42 @@ apiVersion: v1
 entries:
   cibseven:
   - annotations:
+      artifacthub.io/changes: ""
+      artifacthub.io/links: |
+        - name: CIB seven Helm chart
+          url: https://github.com/cibseven-community-hub/cibseven-community-helm-chart/tree/main/charts/cibseven
+        - name: CIB seven Docker
+          url: https://github.com/cibseven/cibseven-docker
+        - name: CIB seven Webclient
+          url: https://github.com/cibseven/cibseven-webclient
+    apiVersion: v2
+    appVersion: 2.x.x
+    created: "2026-08-13T09:57:21.374368427Z"
+    description: 'Community Helm chart for CIB seven, the CIB fork of the Camunda
+      7 process engine (Engine, Tasklist, Cockpit, etc). '
+    digest: 7d165a8ded037e52d304e7232ba9cf80551eaf4f47bd5a0cd023e24b4e57bef1
+    home: https://github.com/cibseven
+    icon: https://cibseven.org/wp-content/uploads/2024/10/CIB-seven-Icon.svg
+    keywords:
+    - bpm
+    - bpmn
+    - cibseven
+    - process-engine
+    - workflow
+    - dmn
+    maintainers:
+    - name: cibseven
+      url: https://github.com/cibseven
+    name: cibseven
+    sources:
+    - https://github.com/cibseven-community-hub/cibseven-community-helm-chart/tree/main/charts/cibseven
+    - https://github.com/cibseven/cibseven-docker
+    - https://github.com/cibseven/cibseven-webclient
+    type: application
+    urls:
+    - https://github.com/cibseven-community-hub/cibseven-community-helm-chart/releases/download/cibseven-0.0.2/cibseven-0.0.2.tgz
+    version: 0.0.2
+  - annotations:
       artifacthub.io/changes: |
         - kind: added
           description: "Added webclient.applicationYaml Spring Boot config override"
@@ -43,4 +79,4 @@ entries:
     urls:
     - https://github.com/cibseven-community-hub/cibseven-community-helm-chart/releases/download/cibseven-0.0.1/cibseven-0.0.1.tgz
     version: 0.0.1
-generated: "2026-08-11T10:38:07.78835818Z"
+generated: "2026-08-13T09:57:21.374374879Z"
