@@ -2,14 +2,14 @@
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "camunda-bpm-platform.fullname" . }}
+  name: {{ include "cibseven.fullname" . }}
   labels:
-    {{- include "camunda-bpm-platform.labels" . | nindent 4 }}
+    {{- include "cibseven.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "camunda-bpm-platform.fullname" . }}
+    name: {{ include "cibseven.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

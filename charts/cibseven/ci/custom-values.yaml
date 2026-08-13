@@ -36,7 +36,7 @@ startupProbe:
   enabled: true
   config:
     httpGet:
-      path: /camunda/
+      path: /webapp/
       port: http
     initialDelaySeconds: 120
     periodSeconds: 60

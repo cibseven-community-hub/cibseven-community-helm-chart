@@ -1,4 +1,4 @@
-# Default values for camunda-bpm-platform.
+# Default values for cibseven.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -20,15 +20,19 @@ commonLabels: {}
 #  my-custom-label: my-value
 
 image:
-  repository: camunda/camunda-bpm-platform
-  tag: latest
+  # Defaults to the CIB seven fork of the Camunda 7 engine.
+  # The `run-*` distribution is a Spring Boot bundle that ships the
+  # cibseven-webclient (Cockpit/Tasklist/Admin) in-process. Use
+  # `tomcat-latest` / `wildfly-latest` for the application-server distros.
+  repository: cibseven/cibseven
+  tag: run4-latest
   pullPolicy: IfNotPresent
   pullSecrets: []
   command: []
   args: []
 
 # Extra environment variables to customize the deployment.
-# For more details: https://github.com/camunda/docker-camunda-bpm-platform
+# For more details: https://github.com/cibseven/cibseven-docker
 extraEnvs: []
 # Example:
 # - name: DB_VALIDATE_ON_BORROW
@@ -90,7 +94,7 @@ startupProbe:
   enabled: false
   config:
     httpGet:
-      path: /camunda/
+      path: /webapp/
       port: http
     initialDelaySeconds: 120
     periodSeconds: 60
@@ -99,7 +103,7 @@ readinessProbe:
   enabled: true
   config:
     httpGet:
-      path: /camunda/
+      path: /webapp/
       port: http
     initialDelaySeconds: 120
     periodSeconds: 60
@@ -109,7 +113,7 @@ livenessProbe:
   enabled: false
   config:
     httpGet:
-      path: /camunda/
+      path: /webapp/
       port: http
     initialDelaySeconds: 120
     periodSeconds: 60
@@ -122,13 +126,13 @@ ingress:
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   hosts:
-    - host: camunda-bpm-platform.local
+    - host: cibseven.local
       paths:
         - /
   tls: []
-  #  - secretName: camunda-bpm-platform-tls
+  #  - secretName: cibseven-tls
   #    hosts:
-  #      - camunda-bpm-platform.local
+  #      - cibseven.local
 
 # Recreate the pods on any install, no matter if anything has changed.
 # Which is useful to recreate the pod if the image tag has not changed.
@@ -185,3 +189,42 @@ affinity: {}
 
 tests:
   annotations: {}
+
+# ------------------------------------------------------------------------------
+# Webclient / Spring Boot application configuration
+#
+# The `cibseven/cibseven:run-*` image is a Spring Boot process that serves both
+# the classic Camunda webapps at /camunda/ and the modern cibseven-webclient at
+# /webapp/ from the same JVM. Any property supported by the upstream
+# cibseven-webclient application.yaml can be overridden here — LDAP, SSO,
+# UI toggles, branding, feature flags, etc. See the upstream reference for the
+# full list of keys:
+#   https://github.com/cibseven/cibseven-webclient/blob/main/helm/cibseven-webclient/values.yaml
+#
+# When `applicationYaml` is non-empty the chart renders it verbatim into a
+# ConfigMap, mounts it at /opt/cibseven/config/application.yaml, and sets
+# SPRING_CONFIG_ADDITIONAL_LOCATION on the engine container so Spring Boot
+# merges it on top of the image's built-in defaults.
+#
+# `tpl` is applied so Helm expressions like `{{ .Release.Name }}` work here.
+#
+# Example:
+#   webclient:
+#     applicationYaml: |
+#       cibseven:
+#         webclient:
+#           theme: cib
+#           productNamePageTitle: "My CIB seven"
+#           ldap:
+#             url: ldap://ldap.example.com:389
+#             folder: dc=example,dc=com
+#             userNameAttribute: uid
+#           authentication:
+#             tokenValidMinutes: 60
+#         ui:
+#           supportedLanguages: [en, de]
+#           layout:
+#             showFeedbackButton: false
+# ------------------------------------------------------------------------------
+webclient:
+  applicationYaml: ""

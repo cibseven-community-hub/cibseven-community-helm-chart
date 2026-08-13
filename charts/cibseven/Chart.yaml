@@ -1,0 +1,34 @@
+apiVersion: v2
+name: cibseven
+description: |
+  Community Helm chart for CIB seven, the CIB fork of the Camunda 7 process engine (Engine, Tasklist, Cockpit, etc).
+type: application
+version: 0.0.2-SNAPSHOT
+appVersion: 2.x.x
+keywords:
+  - bpm
+  - bpmn
+  - cibseven
+  - process-engine
+  - workflow
+  - dmn
+icon: https://cibseven.org/wp-content/uploads/2024/10/CIB-seven-Icon.svg
+home: https://github.com/cibseven
+sources:
+  - https://github.com/cibseven-community-hub/cibseven-community-helm-chart/tree/main/charts/cibseven
+  - https://github.com/cibseven/cibseven-docker
+  - https://github.com/cibseven/cibseven-webclient
+maintainers:
+  - name: cibseven
+    url: https://github.com/cibseven
+annotations:
+  artifacthub.io/links: |
+    - name: CIB seven Helm chart
+      url: https://github.com/cibseven-community-hub/cibseven-community-helm-chart/tree/main/charts/cibseven
+    - name: CIB seven Docker
+      url: https://github.com/cibseven/cibseven-docker
+    - name: CIB seven Webclient
+      url: https://github.com/cibseven/cibseven-webclient
+  # This will be generated automatically by the release workflow.
+  # See .github/workflows/release.yaml
+  artifacthub.io/changes: |
