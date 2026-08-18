@@ -69,7 +69,7 @@ spec:
               value: "{{ .Values.database.driver }}"
             - name: DB_URL
               value: "{{ .Values.database.url }}"
-            {{- if .Values.webclient.applicationYaml }}
+            {{- if .Values.distro.applicationYaml }}
             - name: SPRING_CONFIG_ADDITIONAL_LOCATION
               value: "file:/opt/cibseven/config/"
             {{- end }}
@@ -119,8 +119,8 @@ spec:
             - name: {{ $fullName }}-database-h2
               mountPath: /camunda/camunda-h2-dbs
             {{- end }}
-            {{- if .Values.webclient.applicationYaml }}
-            - name: webclient-config
+            {{- if .Values.distro.applicationYaml }}
+            - name: distro-config
               mountPath: /opt/cibseven/config
               readOnly: true
             {{- end }}
@@ -135,10 +135,10 @@ spec:
           persistentVolumeClaim:
             claimName: {{ $fullName }}-database-h2
         {{- end }}
-        {{- if .Values.webclient.applicationYaml }}
-        - name: webclient-config
+        {{- if .Values.distro.applicationYaml }}
+        - name: distro-config
           configMap:
-            name: {{ $fullName }}-webclient-config
+            name: {{ $fullName }}-distro-config
         {{- end -}}
         {{- if .Values.extraVolumes }}
           {{- tpl (toYaml .Values.extraVolumes) . | nindent 8 }}

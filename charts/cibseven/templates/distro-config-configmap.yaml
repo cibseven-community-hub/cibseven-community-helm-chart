@@ -1,0 +1,11 @@
+{{- if .Values.distro.applicationYaml -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cibseven.fullname" . }}-distro-config
+  labels:
+    {{- include "cibseven.labels" . | nindent 4 }}
+data:
+  application.yaml: |
+    {{- tpl .Values.distro.applicationYaml . | nindent 4 }}
+{{- end }}

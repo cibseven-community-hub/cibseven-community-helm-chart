@@ -191,14 +191,15 @@ tests:
   annotations: {}
 
 # ------------------------------------------------------------------------------
-# Webclient / Spring Boot application configuration
+# CIB seven distro configuration (Spring Boot application.yaml override)
 #
-# The `cibseven/cibseven:run-*` image is a Spring Boot process that serves both
-# the classic Camunda webapps at /camunda/ and the modern cibseven-webclient at
-# /webapp/ from the same JVM. Any property supported by the upstream
-# cibseven-webclient application.yaml can be overridden here — LDAP, SSO,
-# UI toggles, branding, feature flags, etc. See the upstream reference for the
-# full list of keys:
+# Applies to the whole `cibseven/cibseven:run-*` distribution, not just the
+# webclient webapp. The image is a Spring Boot process that serves the classic
+# Camunda webapps at /camunda/ and the modern cibseven-webclient at /webapp/
+# from the same JVM, and any Spring Boot property — engine, datasource,
+# actuator, logging, webclient (LDAP/SSO/UI/branding), etc. — can be overridden
+# here. See the upstream cibseven-webclient reference for webclient-specific
+# keys:
 #   https://github.com/cibseven/cibseven-webclient/blob/main/helm/cibseven-webclient/values.yaml
 #
 # When `applicationYaml` is non-empty the chart renders it verbatim into a
@@ -209,7 +210,7 @@ tests:
 # `tpl` is applied so Helm expressions like `{{ .Release.Name }}` work here.
 #
 # Example:
-#   webclient:
+#   distro:
 #     applicationYaml: |
 #       cibseven:
 #         webclient:
@@ -226,5 +227,5 @@ tests:
 #           layout:
 #             showFeedbackButton: false
 # ------------------------------------------------------------------------------
-webclient:
+distro:
   applicationYaml: ""

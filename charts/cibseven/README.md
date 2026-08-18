@@ -206,22 +206,24 @@ database:
 
 **Please note**, this Helm chart doesn't manage any external database, it just uses what's configured.
 
-### Webclient / Spring Boot configuration
+### Distro configuration (Spring Boot `application.yaml` override)
 
-The `cibseven/cibseven:run-*` image is a Spring Boot process that serves both the classic
-Camunda webapps at `/camunda/` and the modern cibseven-webclient at `/webapp/` from the same
-JVM. Any property supported by the upstream
+Configuration for the whole CIB seven distribution, not just the webclient webapp. The
+`cibseven/cibseven:run-*` image is a Spring Boot process that serves both the classic Camunda
+webapps at `/camunda/` and the modern cibseven-webclient at `/webapp/` from the same JVM, and any
+Spring Boot property — engine, datasource, actuator, logging, or webclient-specific keys (LDAP,
+SSO, UI toggles, branding, feature flags, etc.) — can be overridden here. See the upstream
 [cibseven-webclient `application.yaml`](https://github.com/cibseven/cibseven-webclient/blob/main/helm/cibseven-webclient/values.yaml)
-can be overridden here — LDAP, SSO, UI toggles, branding, feature flags, etc.
+for the webclient-specific keys.
 
-Provide the overrides as raw YAML under `webclient.applicationYaml`. When non-empty, the chart
+Provide the overrides as raw YAML under `distro.applicationYaml`. When non-empty, the chart
 renders it into a `ConfigMap`, mounts it at `/opt/cibseven/config/application.yaml`, and sets
 `SPRING_CONFIG_ADDITIONAL_LOCATION` on the container so Spring Boot merges it on top of the
 image's built-in defaults. Helm expressions inside the block are evaluated (via `tpl`) so you
 can reference other values.
 
 ```yaml
-webclient:
+distro:
   applicationYaml: |
     cibseven:
       webclient:
