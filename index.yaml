@@ -2,6 +2,44 @@ apiVersion: v1
 entries:
   cibseven:
   - annotations:
+      artifacthub.io/changes: |
+        - kind: changed
+          description: "Changed webclient values section to distro (Spring Boot application.yaml override applies to whole CIB seven distribution, not only the webclient webapp)"
+      artifacthub.io/links: |
+        - name: CIB seven Helm chart
+          url: https://github.com/cibseven-community-hub/cibseven-community-helm-chart/tree/main/charts/cibseven
+        - name: CIB seven Docker
+          url: https://github.com/cibseven/cibseven-docker
+        - name: CIB seven Webclient
+          url: https://github.com/cibseven/cibseven-webclient
+    apiVersion: v2
+    appVersion: 2.x.x
+    created: "2026-08-18T12:05:18.054894349Z"
+    description: 'Community Helm chart for CIB seven, the CIB fork of the Camunda
+      7 process engine (Engine, Tasklist, Cockpit, etc). '
+    digest: ad084fc9e42f2b5db99fad3ce2691399677ece541b0c30d98fbd845d7d79db01
+    home: https://github.com/cibseven
+    icon: https://cibseven.org/wp-content/uploads/2024/10/CIB-seven-Icon.svg
+    keywords:
+    - bpm
+    - bpmn
+    - cibseven
+    - process-engine
+    - workflow
+    - dmn
+    maintainers:
+    - name: cibseven
+      url: https://github.com/cibseven
+    name: cibseven
+    sources:
+    - https://github.com/cibseven-community-hub/cibseven-community-helm-chart/tree/main/charts/cibseven
+    - https://github.com/cibseven/cibseven-docker
+    - https://github.com/cibseven/cibseven-webclient
+    type: application
+    urls:
+    - https://github.com/cibseven-community-hub/cibseven-community-helm-chart/releases/download/cibseven-0.0.3/cibseven-0.0.3.tgz
+    version: 0.0.3
+  - annotations:
       artifacthub.io/changes: ""
       artifacthub.io/links: |
         - name: CIB seven Helm chart
@@ -79,4 +117,4 @@ entries:
     urls:
     - https://github.com/cibseven-community-hub/cibseven-community-helm-chart/releases/download/cibseven-0.0.1/cibseven-0.0.1.tgz
     version: 0.0.1
-generated: "2026-08-13T09:57:21.374374879Z"
+generated: "2026-08-18T12:05:18.054902448Z"
