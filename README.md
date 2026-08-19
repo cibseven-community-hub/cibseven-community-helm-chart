@@ -10,6 +10,18 @@ and adapted to install the CIB seven distribution by default.
 
 * [cibseven](./charts/cibseven) — CIB seven engine (Cockpit / Tasklist / Admin).
 
+## Helm repository
+
+Released charts are published to a GitHub Pages Helm repository:
+
+```sh
+$ helm repo add cibseven https://cibseven-community-hub.github.io/cibseven-community-helm-chart
+$ helm repo update
+$ helm search repo cibseven
+```
+
+See the individual chart READMEs for install and configuration details.
+
 ## CI/CD
 
 The CI/CD are done in GitHub Actions, and main actions are used:

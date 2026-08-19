@@ -7,11 +7,23 @@ adapted to install the CIB seven distribution by default.
 
 ## Install
 
+Add the Helm repository and install a released version:
+
+```sh
+$ helm repo add cibseven https://cibseven-community-hub.github.io/cibseven-community-helm-chart
+$ helm repo update
+$ helm install demo cibseven/cibseven
+```
+
+To install a specific version, pass `--version` (e.g. `--version 0.0.3`). Available versions are
+listed in the repository [index.yaml](https://cibseven-community-hub.github.io/cibseven-community-helm-chart/index.yaml)
+and on the chart's [GitHub Releases](https://github.com/cibseven-community-hub/cibseven-community-helm-chart/releases) page.
+
+Alternatively, install directly from a checkout of this repository:
+
 ```sh
 $ helm install demo charts/cibseven
 ```
-
-Once a released chart is published to the Helm registry, install it from there instead.
 
 ## Links
 
