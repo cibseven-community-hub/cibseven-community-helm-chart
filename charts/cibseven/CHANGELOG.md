@@ -1,5 +1,10 @@
 The changelog is automatically generated using [git-chglog](https://github.com/git-chglog/git-chglog) and it follows [Keep a Changelog](https://keepachangelog.com) format.
 
+<a name="cibseven-0.0.4"></a>
+## [cibseven-0.0.4] - 2026-08-19
+### Added
+- Added helm repo add instructions to chart README
+
 <a name="cibseven-0.0.3"></a>
 ## [cibseven-0.0.3] - 2026-08-18
 ### Changed
@@ -20,5 +25,6 @@ rename `webclient.applicationYaml` to `distro.applicationYaml` in your values fi
 - Changed chart version to 1.0.0
 - Changed default chart to CIB seven (cibseven/cibseven engine)
 
+[cibseven-0.0.4]: https://github.com/cibseven-community-hub/cibseven-community-helm-chart/compare/cibseven-0.0.3...cibseven-0.0.4
 [cibseven-0.0.3]: https://github.com/cibseven-community-hub/cibseven-community-helm-chart/compare/cibseven-0.0.2...cibseven-0.0.3
 [cibseven-0.0.2]: https://github.com/cibseven-community-hub/cibseven-community-helm-chart/compare/cibseven-0.0.1...cibseven-0.0.2
