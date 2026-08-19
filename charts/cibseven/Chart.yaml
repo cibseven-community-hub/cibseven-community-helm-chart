@@ -3,7 +3,7 @@ name: cibseven
 description: |
   Community Helm chart for CIB seven, the CIB fork of the Camunda 7 process engine (Engine, Tasklist, Cockpit, etc).
 type: application
-version: 0.0.3
+version: 0.0.4
 appVersion: 2.x.x
 keywords:
   - bpm
