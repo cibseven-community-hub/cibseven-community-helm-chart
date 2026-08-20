@@ -165,13 +165,16 @@ extraContainers:
 ### Image
 
 By default the chart uses the CIB seven fork of the Camunda 7 engine — image `cibseven/cibseven`,
-tag `run-latest`. Like the upstream Camunda image, it ships in three distributions: `tomcat`,
-`wildfly`, and `run`. Each distro publishes its own `*-latest` tag and versioned tags — see the
+tag `run4-latest`. Like the upstream Camunda image, it ships in application-server distributions
+(`tomcat`, `wildfly`) and Spring Boot ones (`run` for Spring Boot 3, `run4` for Spring Boot 4).
+Each distro publishes its own `*-latest` tag and versioned tags — see the
 [cibseven/cibseven Docker Hub page](https://hub.docker.com/r/cibseven/cibseven/tags) for the full
 list.
 
-The `run-*` distribution is a Spring Boot bundle that includes the webclient (Cockpit/Tasklist/Admin)
-in-process. Switch to `tomcat-latest` or `wildfly-latest` if you prefer an application-server distro.
+The `run-*` and `run4-*` distributions are Spring Boot bundles that include the webclient
+(Cockpit/Tasklist/Admin) in-process. Switch to `tomcat-latest` or `wildfly-latest` if you prefer an
+application-server distro. Note that `image.args` (below) only applies to the `run`/`run4`
+distributions — the application-server distros have no start script.
 
 `repository` and `tag` use [`tpl`](https://helm.sh/docs/howto/charts_tips_and_tricks/#using-the-tpl-function) function, it allows you to do templating:
 
@@ -179,6 +182,61 @@ in-process. Switch to `tomcat-latest` or `wildfly-latest` if you prefer an appli
 image:
   tag: "{{ .Chart.Version }}"
 ```
+
+### Start script arguments (`image.args`)
+
+For the `run-*` distribution, `image.args` is passed straight to CIB seven Run's start script.
+The arguments and their default states are documented upstream in
+[Start script arguments](https://docs.cibseven.org/manual/latest/user-guide/cibseven-run/#start-script-arguments):
+
+| Argument | Description | Default state |
+| --- | --- | --- |
+| `--webapps` | Enables the CIB seven web apps | `enabled` |
+| `--rest` | Enables the REST API | `enabled` |
+| `--example` | Enables the example application | `enabled` |
+| `--production` | Applies the `production.yaml` configuration file | `disabled` |
+| `--oauth2` | Enables Spring Security OAuth2 integration | `disabled` |
+| `--detached` | Starts CIB seven Run as a detached process | `enabled` |
+| `--help` | Prints the available start script arguments | – |
+
+`args: []` (the chart default) starts the script with no arguments, so the default states above
+apply and you get the webapps, the REST API and the example app.
+
+#### Passing one argument turns the defaults off
+
+The "default state" column only holds while **no** arguments are passed. As soon as you pass any
+argument, the script is in explicit mode and you get exactly what you list — the upstream docs
+spell this out for `--detached` ("To disable it, explicitly pass a valid argument to the script"),
+and the same applies to the component flags.
+
+This is the usual trap: adding only `--oauth2` to secure the deployment silently drops the webapps
+and the REST API. Nothing fails — the container starts normally, the endpoints are simply not
+there. Everything you still want has to be listed alongside:
+
+```yaml
+image:
+  args:
+    - "./cibseven.sh"
+    - "--webapps"
+    - "--rest"
+    - "--oauth2"
+    - "--production"
+    # --production disables the example app; list it again to keep it.
+    - "--example"
+```
+
+#### `--production` and the demo admin user
+
+`--production` selects `production.yml` instead of `default.yml`. Beyond hardening, it matters
+whenever an external, read-only identity provider (LDAP, Keycloak, SCIM) supplies users and
+groups: `default.yml` defines a demo admin user (id and password `demo`), and that property
+**cannot be cancelled** from `distro.applicationYaml`. Spring Boot's YAML loader drops null leaf
+values entirely rather than treating them as an override, so a blank `admin-user.id` is invisible
+and `default.yml`'s value wins. `production.yml` never defines one, which sidesteps the problem
+instead of fighting it.
+
+Note that `--production` also disables the example application, per the upstream docs; list
+`--example` after it if you want the demo process back.
 
 ### Database
 

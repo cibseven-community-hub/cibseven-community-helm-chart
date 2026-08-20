@@ -29,6 +29,26 @@ image:
   pullPolicy: IfNotPresent
   pullSecrets: []
   command: []
+  # Start script arguments for the `run-*` distribution. Official reference:
+  #   https://docs.cibseven.org/manual/latest/user-guide/cibseven-run/#start-script-arguments
+  # The chart README has the long form, including a worked OAuth2 example.
+  #
+  # Empty (the default) runs the start script with no arguments, which is the
+  # documented default state: --webapps, --rest and --example all enabled.
+  #
+  # Passing ANY argument puts the script in explicit mode — the defaults stop
+  # applying, so every component you still want must be listed. This is the
+  # usual trap: adding just `--oauth2` silently drops the webapps and the REST
+  # API. The container boots fine, so nothing tells you it happened.
+  #
+  #   args:
+  #     - "./cibseven.sh"
+  #     - "--webapps"
+  #     - "--rest"
+  #     - "--oauth2"
+  #     - "--production"
+  #     # --production disables the example app; list it again to keep it.
+  #     - "--example"
   args: []
 
 # Extra environment variables to customize the deployment.
