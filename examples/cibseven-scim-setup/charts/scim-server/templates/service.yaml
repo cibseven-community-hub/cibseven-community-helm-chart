@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # Fixed name (not release-prefixed) so the umbrella chart's
+  # camunda.bpm.run.scim.serverUrl can reference it as a plain static
+  # in-cluster DNS name: http://scim-server:<port>
+  name: scim-server
+  labels:
+    app.kubernetes.io/name: scim-server
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: scim-server
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http

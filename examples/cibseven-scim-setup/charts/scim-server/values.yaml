@@ -1,0 +1,86 @@
+# Throwaway SCIM 2.0 test server for exercising the CIB seven SCIM Identity
+# Provider Plugin without provisioning anything in a real identity provider.
+# Overridable from the umbrella chart's values.yaml under the `scim-server:` key.
+#
+# NOT something to run in a real deployment: the store is in-memory, there is no
+# TLS, and the credentials below are the upstream defaults.
+#
+# OFF BY DEFAULT, for two reasons: a real deployment points the plugin at its own
+# identity provider, and the image below has to be built by hand (scimgateway
+# publishes none), so enabling it without that build step just yields an
+# ErrImageNeverPull pod. Switch it on only for a local try-out — see the umbrella
+# README for the full recipe.
+#
+# This key drives the `scim-server.enabled` condition on the parent chart's
+# dependency entry, so it removes the Deployment, the Service and the seed Job
+# together.
+enabled: false
+
+# scimgateway (github.com/jelhub/scimgateway) — see the umbrella README for why
+# this particular implementation.
+#
+# It publishes no official container image (npm package only), so this has to be
+# an image you build yourself:
+#
+#   git clone https://github.com/jelhub/scimgateway && cd scimgateway
+#   cp config/docker/Dockerfile .
+#   docker build -t scimgateway:local .
+#
+# Then make it reachable from the cluster, whichever way fits yours:
+#   * kind:     kind load docker-image scimgateway:local
+#   * minikube: minikube image load scimgateway:local
+#   * anything else: push it to a registry your nodes can pull from and set
+#     `repository` to that, with `pullPolicy: IfNotPresent`
+#
+# `pullPolicy: Never` below assumes the image was side-loaded into the node's
+# local cache and does not exist in any registry — change it if you pushed one.
+image:
+  repository: scimgateway
+  tag: local
+  pullPolicy: Never
+
+service:
+  port: 8880
+
+# scimgateway's default config/plugin-loki.json ships with these as its built-in
+# Basic Auth credentials. They are upstream defaults rather than secrets, but the
+# engine side still reads the password from a Secret (see the umbrella chart's
+# `cibseven.scim.credential`) so the pattern carries over to a real endpoint —
+# keep the two in sync.
+adminUsername: gwadmin
+adminPassword: password
+
+seed:
+  # Runs a post-install/post-upgrade Job that creates deterministic users and
+  # groups over the SCIM API. scimgateway's Loki plugin starts with one
+  # unrelated sample user ("bjensen") of its own and nothing else.
+  enabled: true
+  image:
+    repository: curlimages/curl
+    tag: "8.10.1"
+    pullPolicy: IfNotPresent
+  users:
+    - userName: camunda-admin-user
+      givenName: Ada
+      familyName: Admin
+      email: camunda-admin-user@example.com
+    - userName: camunda-test-user
+      givenName: Tess
+      familyName: User
+      email: camunda-test-user@example.com
+  groups:
+    # The plugin's default `groupIdAttribute` is "externalId", and scimgateway
+    # round-trips externalId on Group resources correctly, so no attribute
+    # override is needed on the engine side.
+    #
+    # The group named here as the administrator group must match
+    # `cibseven.scim.adminGroup` in the umbrella values.
+    - displayName: camunda-admin
+      externalId: camunda-admin
+      members:
+        - camunda-admin-user
+    - displayName: camunda-users
+      externalId: camunda-users
+      members:
+        - camunda-admin-user
+        - camunda-test-user

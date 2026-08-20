@@ -1,0 +1,283 @@
+# =============================================================================
+# CIB seven + SCIM 2.0 — example values
+#
+# Two independent halves:
+#   * authentication (who is logging in) — OpenID Connect, `oidc` below
+#   * identity       (which users and groups exist) — the SCIM Identity
+#                    Provider Plugin built into CIB seven Run, `scim` below
+#
+# This file deliberately contains ONLY what those two need. Everything else
+# (replica count, service, database, probes, ingress, resources, ...) is left at
+# the `cibseven` chart's defaults — see charts/cibseven/values.yaml for those
+# knobs and README.md for the ones you will typically want to change too.
+#
+# You supply the SCIM endpoint: the plugin reads whatever `scim.serverUrl` points
+# at, and the engine image needs nothing installed for it. A throwaway local SCIM
+# server (`scim-server`, section 5) is bundled for trying things out without a
+# real directory, but it is off by default and needs a hand-built image.
+# =============================================================================
+
+cibseven:
+  # ---------------------------------------------------------------------------
+  # 1. OpenID Connect provider — EDIT THIS.
+  #
+  # These are NOT keys of the `cibseven` subchart. They are helper values read
+  # by the Helm expressions in `distro.applicationYaml` and `extraEnvs`
+  # below (the subchart renders both through `tpl`), so the issuer URL is
+  # written once instead of five times.
+  # ---------------------------------------------------------------------------
+  oidc:
+    # Issuer URL of your OIDC provider. It must be reachable under this URL
+    # from BOTH the browser (login redirect) and the engine pod (token and JWKS
+    # calls) — a pod-internal URL plus a public browser URL yields two
+    # different issuers and logins fail with "invalid token".
+    #
+    # Keycloak: https://<host>/realms/<realm>
+    # (Keycloak < 17 or with a legacy context path: .../auth/realms/<realm>)
+    issuerUrl: https://sso.example.com/realms/cibseven
+    clientId: cibseven
+    # The client secret is deliberately NOT stored in this file. Create the
+    # Secret out of band (see README.md) and only reference it here; it is
+    # injected as $OIDC_CLIENT_SECRET and resolved by Spring inside
+    # application.yaml.
+    clientSecret:
+      secretName: cibseven-oidc-client
+      secretKey: client-secret
+
+  # ---------------------------------------------------------------------------
+  # 2. SCIM endpoint — EDIT THIS for anything other than a local try-out.
+  #
+  # Same mechanism as `oidc` above: helper values, not subchart keys.
+  # ---------------------------------------------------------------------------
+  scim:
+    # Base URL of the SCIM 2.0 service — your identity provider's SCIM endpoint.
+    #
+    # For a local try-out without a real directory, the bundled scim-server
+    # fixture (section 5) serves one at http://scim-server:8880 — see README.md
+    # for the handful of overrides that switches this over to it.
+    serverUrl: https://scim.example.com/scim/v2
+    # basic | bearer | oauth2. "bearer" is the plugin's own default and what most
+    # hosted SCIM endpoints use; the bundled fixture wants "basic".
+    authenticationType: bearer
+    # Only used when authenticationType is "basic".
+    username: cibseven
+    # Credential for the SCIM endpoint: the bearer token, or the Basic password
+    # when authenticationType is "basic". A Secret reference again, injected as
+    # $SCIM_CREDENTIAL.
+    credential:
+      secretName: cibseven-scim-credentials
+      secretKey: credential
+    # Group whose members become CIB seven administrators. It must exist in the
+    # SCIM directory — with the bundled fixture it is seeded by
+    # `scim-server.seed.groups` at the bottom of this file.
+    adminGroup: camunda-admin
+
+  # ---------------------------------------------------------------------------
+  # 3. Engine image.
+  #
+  # The SCIM Identity Provider Plugin
+  # (org.cibseven.bpm.identity.impl.scim.plugin.ScimIdentityProviderPlugin) is
+  # compiled into CIB seven Run's core module and activated purely through the
+  # `camunda.bpm.run.scim.*` properties below — no jar to fetch and no
+  # initContainer, unlike the Keycloak identity provider plugin.
+  #
+  # It shipped with engine 2.2.0, so any image from run-2.2.0 onwards has it.
+  # This pins the "run" (Spring Boot 3) distribution, which is what the setup
+  # was verified against; the plugin is available in "run4" (Spring Boot 4, the
+  # chart's default) as well.
+  # ---------------------------------------------------------------------------
+  image:
+    tag: run-2.2.0
+    # Why each of these flags is here — the explicit-mode trap, the
+    # --oauth2/auth-filter exclusion and the demo admin user that --production
+    # avoids — is documented in the chart itself:
+    #   charts/cibseven/README.md -> "Start script arguments (image.args)"
+    #   https://docs.cibseven.org/manual/latest/user-guide/cibseven-run/#start-script-arguments
+    #
+    # In short: --oauth2 is what loads the Spring Security OAuth2 module, and
+    # without it every `spring.security.oauth2.*` / `camunda.bpm.oauth2.*`
+    # property below is silently ignored. Passing it also switches the start
+    # script to explicit mode, so --webapps and --rest have to be repeated.
+    # --production avoids default.yml's demo admin-user, which is fatal with a
+    # read-only identity provider and cannot be overridden from
+    # distro.applicationYaml.
+    args:
+      - "./cibseven.sh"
+      - "--webapps"
+      - "--rest"
+      - "--oauth2"
+      - "--production"
+      # Deploys the built-in invoice demo process. Useful to verify the setup
+      # end to end, remove it for real deployments.
+      - "--example"
+
+  extraEnvs:
+    # Both are resolved as ${...} inside application.yaml below, so neither
+    # secret appears in this file or in the rendered ConfigMap.
+    - name: OIDC_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: "{{ .Values.oidc.clientSecret.secretName }}"
+          key: "{{ .Values.oidc.clientSecret.secretKey }}"
+    - name: SCIM_CREDENTIAL
+      valueFrom:
+        secretKeyRef:
+          name: "{{ .Values.scim.credential.secretName }}"
+          key: "{{ .Values.scim.credential.secretKey }}"
+
+  # ---------------------------------------------------------------------------
+  # 4. Distro (Spring Boot) configuration.
+  #
+  # The `cibseven/cibseven:run-*` image serves both the classic Camunda webapps
+  # at /camunda/ and the modern cibseven-webclient at /webapp/ from the same
+  # JVM. Anything from the upstream webclient application.yaml schema can go
+  # here — the subchart renders this block into a ConfigMap mounted at
+  # /opt/cibseven/config/application.yaml. Only the OIDC and SCIM properties are
+  # set below; branding, languages and the other webclient options are
+  # documented in charts/cibseven/README.md.
+  #
+  # See the upstream reference for the full property tree:
+  #   https://github.com/cibseven/cibseven-webclient/blob/main/helm/cibseven-webclient/values.yaml
+  #
+  # The block is passed through Helm's `tpl`, which is what lets the
+  # `{{ .Values.oidc.* }}` / `{{ .Values.scim.* }}` expressions resolve against
+  # sections 1 and 2. `${...}` is left untouched by Helm and resolved by Spring
+  # from the environment at startup.
+  #
+  # Heads up: this file only overrides Spring's *external config*. Properties
+  # belonging to an engine module that isn't on the classpath at boot time
+  # (e.g. `camunda.bpm.oauth2.*` / `spring.security.oauth2.*` without the
+  # `--oauth2` flag above) are silently ignored no matter where you set them,
+  # since no Spring bean listens for that prefix.
+  # ---------------------------------------------------------------------------
+  distro:
+    applicationYaml: |
+      # Setting jwk-set-uri is what activates
+      # CamundaSpringSecurityOAuth2EngineAutoConfiguration
+      # (ResourceServerConfiguredCondition in cibseven's spring-boot-starter),
+      # the Spring Security filter chain that secures /engine-rest/**.
+      #
+      # Commenting this block out — together with camunda.bpm.run.auth.enabled
+      # being false below — leaves Engine REST with NO authentication at all,
+      # which is handy for poking at /engine-rest/user, /engine-rest/group etc.
+      # directly while bringing the SCIM setup up. Don't leave it that way: it
+      # doesn't affect the webclient's own SSO login flow, only engine-rest's
+      # Spring Security layer.
+      spring:
+        security:
+          oauth2:
+            resourceserver:
+              jwt:
+                principal-claim-name: preferred_username
+                jwk-set-uri: {{ .Values.oidc.issuerUrl }}/protocol/openid-connect/certs
+      cibseven:
+        webclient:
+          user:
+            provider: org.cibseven.webapp.auth.KeycloakUserProvider
+          sso:
+            active: true
+            # These paths are Keycloak's OIDC layout. For any other provider,
+            # copy the four URLs out of its
+            # <issuerUrl>/.well-known/openid-configuration document.
+            endpoints:
+              authorization: {{ .Values.oidc.issuerUrl }}/protocol/openid-connect/auth
+              token: {{ .Values.oidc.issuerUrl }}/protocol/openid-connect/token
+              jwks: {{ .Values.oidc.issuerUrl }}/protocol/openid-connect/certs
+              user: {{ .Values.oidc.issuerUrl }}/protocol/openid-connect/userinfo
+            clientId: {{ .Values.oidc.clientId }}
+            clientSecret: ${OIDC_CLIENT_SECRET}
+            scopes: openid profile email
+            userIdProperty: preferred_username
+            userNameProperty: name
+            # Forwards the SSO access token to Engine REST — required because
+            # Engine REST is secured by Spring Security OAuth2 above.
+            accessTokenToEngineRest: true
+      camunda:
+        bpm:
+          # This engine's identity and authorization data comes from the SCIM
+          # plugin (camunda.bpm.run.scim below), not from OAuth2 token claims,
+          # so the built-in claims-based identity provider is disabled.
+          oauth2:
+            identity-provider:
+              enabled: false
+          run:
+            # CIB seven Run's own pseudo/basic/composite auth filter for Engine
+            # REST must be OFF when using --oauth2 — running both causes Engine
+            # REST to reject CIB seven webapp requests. The image's baked-in
+            # default.yml turns this on (mode: pseudo), so it has to be
+            # overridden here explicitly.
+            auth:
+              enabled: false
+            # SCIM Identity Provider Plugin. Works against any SCIM 2.0
+            # service. This example was verified against scimgateway; some other
+            # servers currently trip over the group-membership filter syntax the
+            # plugin sends — a known limitation being worked on upstream, so
+            # check for a newer engine version rather than assuming your
+            # provider is unsupported. See README.md for the details.
+            # Reference: engine-plugins/identity-scim/README.md in cibseven.
+            scim:
+              enabled: true
+              serverUrl: {{ .Values.scim.serverUrl }}
+              authenticationType: {{ .Values.scim.authenticationType }}
+              {{- if eq .Values.scim.authenticationType "basic" }}
+              username: {{ .Values.scim.username }}
+              password: ${SCIM_CREDENTIAL}
+              {{- else if eq .Values.scim.authenticationType "bearer" }}
+              bearerToken: ${SCIM_CREDENTIAL}
+              {{- end }}
+              # Attribute mapping is left at the plugin's defaults
+              # (userIdAttribute: userName, groupIdAttribute: externalId,
+              # groupMemberAttribute: members, ...). Override here if your
+              # directory shapes them differently — see the plugin README.
+              #
+              # Read-only by default. Turning this on lets the engine
+              # create and delete users and groups in the SCIM directory, which
+              # most providers neither expect nor permit — only enable it
+              # against a throwaway test server.
+              # allowModifications: true
+              #
+              # Logs every SCIM request and response. Useful while bringing the
+              # setup up, far too chatty afterwards.
+              # verbose: true
+            # Generic admin-group plugin: grants ADMIN authorization on all
+            # built-in resources to this group. The SCIM plugin has no
+            # admin-group option of its own (unlike the Keycloak identity
+            # provider plugin), so this is what bootstraps an administrator.
+            admin-auth:
+              enabled: true
+              administratorGroupName: {{ .Values.scim.adminGroup | quote }}
+          # No admin-user block here on purpose: the SCIM plugin is a read-only
+          # identity provider by default and can't create one. --production
+          # above (which doesn't define a demo admin-user) is what actually
+          # prevents a baked-in demo admin.
+          authorization:
+            enabled: true
+
+# -----------------------------------------------------------------------------
+# 5. Bundled SCIM test server — OFF by default, opt in for local testing only.
+#
+# A throwaway scimgateway instance with deterministic seed fixtures, so the
+# plugin has something to talk to without provisioning anything in a real
+# directory. It needs a hand-built image (scimgateway publishes none), which is
+# why it stays off by default — enabling it without that build step just gives
+# you an ErrImageNeverPull pod. README.md has the build and the full set of
+# overrides; charts/scim-server/values.yaml has the rest of the knobs.
+#
+# Delete this block and the charts/scim-server directory if you have no use for
+# it — the rest of the example does not depend on it.
+# -----------------------------------------------------------------------------
+scim-server:
+  enabled: false
+  # The seeded admin group has to match `cibseven.scim.adminGroup` above, or
+  # nobody ends up with administrator rights.
+  seed:
+    groups:
+      - displayName: camunda-admin
+        externalId: camunda-admin
+        members:
+          - camunda-admin-user
+      - displayName: camunda-users
+        externalId: camunda-users
+        members:
+          - camunda-admin-user
+          - camunda-test-user

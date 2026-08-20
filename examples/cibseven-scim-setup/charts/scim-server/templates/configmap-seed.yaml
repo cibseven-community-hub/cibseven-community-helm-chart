@@ -1,0 +1,107 @@
+{{- if .Values.seed.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scim-server-seed
+  labels:
+    app.kubernetes.io/name: scim-server
+data:
+  seed.sh: |
+    set -e
+
+    AUTH="{{ .Values.adminUsername }}:{{ .Values.adminPassword }}"
+    BASE="http://scim-server:{{ .Values.service.port }}"
+
+    log() { echo "[seed] $*"; }
+
+    # The server starts in seconds, but retry anyway rather than assuming the
+    # pod is instantly reachable.
+    wait_for_server() {
+      log "waiting for scim-server to become ready..."
+      i=0
+      until curl -sf -u "$AUTH" --max-time 5 "$BASE/Users" > /dev/null 2>&1; do
+        i=$((i + 1))
+        if [ "$i" -ge 30 ]; then
+          log "scim-server did not become ready in time"
+          exit 1
+        fi
+        sleep 2
+      done
+      log "scim-server is up"
+    }
+
+    # Idempotent: the seed Job reruns on every helm upgrade while
+    # scim-server's own data (in-memory, but tied to the pod's lifetime, not
+    # the release's) persists across it — re-POSTing an existing
+    # userName/displayName 409s, so look each one up first.
+    create_user() {
+      userName="$1"; givenName="$2"; familyName="$3"; email="$4"
+      existing=$(curl -sf -u "$AUTH" --get "$BASE/Users" --data-urlencode "filter=userName eq \"$userName\"")
+      id=$(echo "$existing" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+      if [ -n "$id" ]; then
+        log "user $userName already exists -> $id"
+      else
+        payload=$(cat <<EOF
+    {
+      "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+      "userName": "$userName",
+      "name": {"givenName": "$givenName", "familyName": "$familyName"},
+      "emails": [{"value": "$email", "type": "work", "primary": true}],
+      "active": true
+    }
+    EOF
+    )
+        response=$(curl -sf -u "$AUTH" -X POST "$BASE/Users" \
+          -H "Content-Type: application/scim+json" -d "$payload")
+        id=$(echo "$response" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        log "created user $userName -> $id"
+      fi
+      varname=$(echo "USERID_$userName" | tr -c 'A-Za-z0-9_' '_')
+      eval "$varname=\"$id\""
+    }
+
+    create_group() {
+      displayName="$1"; externalId="$2"; shift 2
+      existing=$(curl -sf -u "$AUTH" --get "$BASE/Groups" --data-urlencode "filter=displayName eq \"$displayName\"")
+      existingId=$(echo "$existing" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+      if [ -n "$existingId" ]; then
+        log "group $displayName already exists -> $existingId"
+        return
+      fi
+      members_json=""
+      for member in "$@"; do
+        varname=$(echo "USERID_$member" | tr -c 'A-Za-z0-9_' '_')
+        eval "memberid=\$$varname"
+        if [ -z "$memberid" ]; then
+          log "WARNING: member $member has no known id, skipping"
+          continue
+        fi
+        if [ -n "$members_json" ]; then members_json="$members_json,"; fi
+        members_json="$members_json{\"value\":\"$memberid\"}"
+      done
+      payload=$(cat <<EOF
+    {
+      "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+      "displayName": "$displayName",
+      "externalId": "$externalId",
+      "members": [$members_json]
+    }
+    EOF
+    )
+      curl -sf -u "$AUTH" -X POST "$BASE/Groups" \
+        -H "Content-Type: application/scim+json" -d "$payload" > /dev/null
+      log "created group $displayName (externalId=$externalId)"
+    }
+
+    wait_for_server
+
+    {{- range .Values.seed.users }}
+    create_user "{{ .userName }}" "{{ .givenName }}" "{{ .familyName }}" "{{ .email }}"
+    {{- end }}
+
+    {{- range .Values.seed.groups }}
+    create_group "{{ .displayName }}" "{{ .externalId }}"{{ range .members }} "{{ . }}"{{ end }}
+    {{- end }}
+
+    log "seed complete"
+{{- end }}

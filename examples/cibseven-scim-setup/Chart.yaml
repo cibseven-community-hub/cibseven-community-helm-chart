@@ -1,0 +1,34 @@
+apiVersion: v2
+name: cibseven-scim-setup
+description: Example umbrella chart running CIB seven with SCIM 2.0 user/group provisioning and OIDC login
+type: application
+version: 0.1.0
+
+# ------------------------------------------------------------------------------
+# This chart is an EXAMPLE, not a published artifact. Copy the directory into
+# your own GitOps repository, adapt `values.yaml` (see README.md) and deploy it
+# from there.
+#
+# The `cibseven` dependency is served from GitHub Pages by the
+# cibseven-community-hub/cibseven-community-helm-chart release workflow. Pin
+# `version` to a released chart version — see
+# https://github.com/cibseven-community-hub/cibseven-community-helm-chart/releases
+#
+# To test against an unpublished / local copy of the chart, swap the repository
+# line for a `file://` relative path, e.g.:
+#   repository: "file://../../charts/cibseven"
+# ------------------------------------------------------------------------------
+dependencies:
+  - name: cibseven
+    version: 0.0.4
+    repository: https://cibseven-community-hub.github.io/cibseven-community-helm-chart
+
+  # charts/scim-server is a local subchart vendored into this directory rather
+  # than pulled from a repository, hence the empty `repository` — Helm reads it
+  # straight out of charts/ and `helm dependency update` leaves it alone. The
+  # condition makes it opt-out: set `scim-server.enabled: false` in values.yaml
+  # (or delete the directory) when the plugin points at a real SCIM endpoint.
+  - name: scim-server
+    version: "0.1.0"
+    repository: ""
+    condition: scim-server.enabled

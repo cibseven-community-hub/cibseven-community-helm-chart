@@ -1,0 +1,239 @@
+# =============================================================================
+# CIB seven + Keycloak — example values
+#
+# This file deliberately contains ONLY what the Keycloak integration needs.
+# Everything else (replica count, service, database, probes, ingress,
+# resources, ...) is left at the `cibseven` chart's defaults so that the
+# Keycloak-specific parts stand out — see charts/cibseven/values.yaml for those
+# knobs and README.md for the ones you will typically want to change too.
+#
+# Read README.md first: this only works against a Keycloak client that is
+# configured in a specific way (confidential client + a service account with
+# read access to users and groups).
+# =============================================================================
+
+cibseven:
+  # ---------------------------------------------------------------------------
+  # Keycloak coordinates — THE BLOCK YOU HAVE TO EDIT.
+  #
+  # These are NOT keys of the `cibseven` subchart. They are helper values read
+  # by the Helm expressions further down (the subchart renders both
+  # `distro.applicationYaml` and `extraEnvs` through `tpl`), so the Keycloak
+  # base URL and realm are written exactly once instead of six times.
+  # ---------------------------------------------------------------------------
+  keycloak:
+    # Base URL of Keycloak. It must be reachable under this URL from BOTH the
+    # browser (login redirect) and the engine pod (token, JWKS and admin API
+    # calls). If Keycloak runs in the same cluster, still use the public URL
+    # here and make sure the pod can resolve it — using an in-cluster URL for
+    # the pod and a public one for the browser produces two different token
+    # issuers and logins will fail with "invalid token".
+    #
+    # Older Keycloak deployments (< 17, or with a legacy context path) serve
+    # everything under /auth — then use e.g. https://keycloak.example.com/auth
+    url: https://keycloak.example.com
+    # Realm holding the CIB seven users and groups.
+    realm: cibseven
+    # Client ID of the confidential client created for CIB seven.
+    clientId: cibseven
+    # Keycloak group whose members become CIB seven administrators. Because
+    # `useGroupPathAsCamundaGroupId` is enabled below, this is the group PATH,
+    # e.g. "cibseven-admin" for a top-level group or "/tenant-a/admins" for a
+    # nested one.
+    administratorGroup: cibseven-admin
+    # The client secret is deliberately NOT stored in this file. Create the
+    # Secret out of band (see README.md) and only reference it here; it is
+    # injected into the pod as $KEYCLOAK_CLIENT_SECRET and resolved by Spring
+    # inside application.yaml.
+    clientSecret:
+      secretName: cibseven-keycloak-client
+      secretKey: client-secret
+
+  # ---------------------------------------------------------------------------
+  # Engine image and startup flags.
+  # ---------------------------------------------------------------------------
+  image:
+    # "run" (Spring Boot 3), not the chart's default "run4" (Spring Boot 4) —
+    # the Keycloak identity provider plugin jar isn't yet compatible with Spring
+    # Framework 7 (used by run4). Switch back to a run4 tag once the plugin is
+    # upgraded for Spring Boot 4.
+    #
+    # Pin this to a released tag (e.g. "run-1.2.0") instead of a floating
+    # "-latest" tag for anything you have to reproduce or roll back.
+    tag: run-2.2.0
+    # Why each of these flags is here — the explicit-mode trap, the
+    # --oauth2/auth-filter exclusion and the demo admin user that --production
+    # avoids — is documented in the chart itself:
+    #   charts/cibseven/README.md -> "Start script arguments (image.args)"
+    #   https://docs.cibseven.org/manual/latest/user-guide/cibseven-run/#start-script-arguments
+    #
+    # In short: --oauth2 is what loads the Spring Security OAuth2 module, and
+    # without it every `spring.security.oauth2.*` / `camunda.bpm.oauth2.*`
+    # property below is silently ignored. Passing it also switches the start
+    # script to explicit mode, so --webapps and --rest have to be repeated.
+    # --production avoids default.yml's demo admin-user, which is fatal with a
+    # read-only identity provider and cannot be overridden from
+    # distro.applicationYaml.
+    args:
+      - "./cibseven.sh"
+      - "--webapps"
+      - "--rest"
+      - "--oauth2"
+      - "--production"
+      # Deploys the built-in invoice demo process. Useful to verify the setup
+      # end to end, remove it for real deployments.
+      - "--example"
+
+  # ---------------------------------------------------------------------------
+  # Keycloak identity provider plugin jar.
+  #
+  # CIB seven Run ships with a read-only "Keycloak Identity Provider Plugin"
+  # (`plugin.identity.keycloak.*` below) that resolves users and groups against
+  # Keycloak's admin API. Unlike everything else in this file, the plugin is NOT
+  # part of the cibseven/cibseven image — its jar has to be present in
+  # /camunda/configuration/userlib at boot. The image already bakes the
+  # H2/MySQL/Postgres JDBC drivers and Groovy into that SAME directory, so an
+  # empty volume cannot simply be mounted there (that hides them and breaks the
+  # datasource). Instead this initContainer runs the same image, copies the
+  # existing userlib/ contents into a shared emptyDir and adds the plugin jar to
+  # it; the main container mounts that emptyDir over userlib/ and ends up with
+  # everything the image shipped plus our addition.
+  #
+  # Match the plugin version to your engine version — see
+  # https://github.com/cibseven-community-hub/cibseven-keycloak/releases
+  #
+  # Restricted or air-gapped clusters: this requires egress to
+  # artifacts.cibseven.org. Alternatives are to point the URL at an internal
+  # artifact mirror, or to bake the jar into a derived image and drop the
+  # initContainer, the emptyDir volume and the volume mount entirely.
+  #
+  # `initContainers` is NOT rendered through `tpl` by the subchart, so the image
+  # below cannot reference `image.tag` — keep it in sync by hand.
+  # ---------------------------------------------------------------------------
+  initContainers:
+    - name: fetch-keycloak-identity-plugin
+      image: cibseven/cibseven:run-latest
+      env:
+        - name: IDENTITY_PROVIDER_VERSION
+          value: "2.1.0"
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          cp -a /camunda/configuration/userlib/. /userlib/
+          curl -fsSL -o "/userlib/cibseven-keycloak-run-${IDENTITY_PROVIDER_VERSION}.jar" \
+            "https://artifacts.cibseven.org/repository/community/org/cibseven/bpm/extension/cibseven-keycloak-run/${IDENTITY_PROVIDER_VERSION}/cibseven-keycloak-run-${IDENTITY_PROVIDER_VERSION}.jar"
+      volumeMounts:
+        - name: keycloak-identity-plugin
+          mountPath: /userlib
+
+  extraVolumes:
+    - name: keycloak-identity-plugin
+      emptyDir: {}
+
+  extraVolumeMounts:
+    - name: keycloak-identity-plugin
+      mountPath: /camunda/configuration/userlib
+
+  extraEnvs:
+    # Resolved as ${KEYCLOAK_CLIENT_SECRET} inside application.yaml below, so
+    # the secret never appears in this file or in the rendered ConfigMap.
+    - name: KEYCLOAK_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: "{{ .Values.keycloak.clientSecret.secretName }}"
+          key: "{{ .Values.keycloak.clientSecret.secretKey }}"
+
+  # ---------------------------------------------------------------------------
+  # Webclient / Spring Boot configuration.
+  #
+  # The `cibseven/cibseven:run-*` image serves both the classic Camunda webapps
+  # at /camunda/ and the modern cibseven-webclient at /webapp/ from the same
+  # JVM. Anything from the upstream webclient application.yaml schema can go
+  # here — the subchart renders this block into a ConfigMap mounted at
+  # /opt/cibseven/config/application.yaml. Only the SSO / identity properties
+  # are set below; branding, languages, LDAP and the other webclient options are
+  # documented in charts/cibseven/README.md.
+  #
+  # See the upstream reference for the full property tree:
+  #   https://github.com/cibseven/cibseven-webclient/blob/main/helm/cibseven-webclient/values.yaml
+  #
+  # The block is passed through Helm's `tpl`, which is what lets the
+  # `{{ .Values.keycloak.* }}` expressions below resolve against the block at
+  # the top of this file. `${...}` is left untouched by Helm and resolved by
+  # Spring from the environment at startup.
+  #
+  # Heads up: this file only overrides Spring's *external config*. Properties
+  # belonging to an engine module that isn't on the classpath at boot time
+  # (e.g. `camunda.bpm.oauth2.*` / `spring.security.oauth2.*` without the
+  # `--oauth2` flag above, or `plugin.identity.keycloak.*` without its jar in
+  # configuration/userlib) are silently ignored no matter where you set them,
+  # since no Spring bean listens for that prefix.
+  # ---------------------------------------------------------------------------
+  distro:
+    applicationYaml: |
+      spring:
+        security:
+          oauth2:
+            resourceserver:
+              jwt:
+                principal-claim-name: preferred_username
+                jwk-set-uri: {{ .Values.keycloak.url }}/realms/{{ .Values.keycloak.realm }}/protocol/openid-connect/certs
+      cibseven:
+        webclient:
+          user:
+            provider: org.cibseven.webapp.auth.KeycloakUserProvider
+          sso:
+            active: true
+            endpoints:
+              authorization: {{ .Values.keycloak.url }}/realms/{{ .Values.keycloak.realm }}/protocol/openid-connect/auth
+              token: {{ .Values.keycloak.url }}/realms/{{ .Values.keycloak.realm }}/protocol/openid-connect/token
+              jwks: {{ .Values.keycloak.url }}/realms/{{ .Values.keycloak.realm }}/protocol/openid-connect/certs
+              user: {{ .Values.keycloak.url }}/realms/{{ .Values.keycloak.realm }}/protocol/openid-connect/userinfo
+            clientId: {{ .Values.keycloak.clientId }}
+            clientSecret: ${KEYCLOAK_CLIENT_SECRET}
+            scopes: openid profile email
+            userIdProperty: preferred_username
+            userNameProperty: name
+            # Forwards the SSO access token to Engine REST — required since
+            # Engine REST is secured by Spring Security OAuth2 below.
+            accessTokenToEngineRest: true
+      camunda:
+        bpm:
+          # This engine's identity/authorization data comes from the Keycloak
+          # plugin (plugin.identity.keycloak below), not from OAuth2 token
+          # claims, so the built-in claims-based identity provider is disabled.
+          oauth2:
+            identity-provider:
+              enabled: false
+          # CIB seven Run's own pseudo/basic/composite auth filter for Engine
+          # REST must be OFF when using --oauth2 — running both causes Engine
+          # REST to reject CIB seven webapp requests. The image's baked-in
+          # default.yml turns this on (mode: pseudo), so it has to be overridden
+          # here explicitly.
+          run:
+            auth:
+              enabled: false
+          # No admin-user block here on purpose: the Keycloak plugin is a
+          # read-only identity provider and can't create one. --production
+          # above (which doesn't define a demo admin-user) is what actually
+          # prevents this.
+          authorization:
+            enabled: true
+      # Keycloak identity provider plugin config (needs the jar fetched by the
+      # initContainer above to do anything).
+      # Reference: https://github.com/cibseven-community-hub/cibseven-keycloak
+      plugin:
+        identity:
+          keycloak:
+            keycloakIssuerUrl: {{ .Values.keycloak.url }}/realms/{{ .Values.keycloak.realm }}
+            keycloakAdminUrl: {{ .Values.keycloak.url }}/admin/realms/{{ .Values.keycloak.realm }}
+            clientId: {{ .Values.keycloak.clientId }}
+            clientSecret: ${KEYCLOAK_CLIENT_SECRET}
+            administratorGroupName: {{ .Values.keycloak.administratorGroup | quote }}
+            useUsernameAsCamundaUserId: true
+            useGroupPathAsCamundaGroupId: true
+            cacheEnabled: true
+            maxCacheSize: 500
+            cacheExpirationTimeoutMin: 15

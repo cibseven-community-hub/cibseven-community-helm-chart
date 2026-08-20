@@ -1,0 +1,4 @@
+# Artifacts of `helm dependency update`.
+# charts/scim-server is vendored on purpose — do not ignore it.
+charts/*.tgz
+Chart.lock
