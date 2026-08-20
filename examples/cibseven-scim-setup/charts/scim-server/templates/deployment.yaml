@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scim-server
+  labels:
+    app.kubernetes.io/name: scim-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scim-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: scim-server
+    spec:
+      containers:
+        - name: scim-server
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8880
+          # A Node app with an in-memory store — small and quick to start.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /Users
+              port: http
+              httpHeaders:
+                - name: Authorization
+                  value: "Basic {{ printf "%s:%s" .Values.adminUsername .Values.adminPassword | b64enc }}"
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20

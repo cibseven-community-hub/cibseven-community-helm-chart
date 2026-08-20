@@ -1,0 +1,8 @@
+apiVersion: v2
+name: scim-server
+description: >-
+  Throwaway SCIM 2.0 test server (scimgateway) for exercising the CIB seven SCIM
+  Identity Provider Plugin without provisioning anything in a real identity
+  provider. Not for production use.
+type: application
+version: 0.1.0

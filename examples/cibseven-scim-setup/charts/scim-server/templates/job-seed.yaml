@@ -1,0 +1,37 @@
+{{- if .Values.seed.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: scim-server-seed
+  labels:
+    app.kubernetes.io/name: scim-server-seed
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  # backoffLimit: 0 — surface the real first-attempt error instead of masking
+  # it behind retries. Re-running the Job by hand is safe: the script looks
+  # each user and group up before creating it.
+  backoffLimit: 0
+  activeDeadlineSeconds: 180
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: scim-server-seed
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: seed
+          image: "{{ .Values.seed.image.repository }}:{{ .Values.seed.image.tag }}"
+          imagePullPolicy: {{ .Values.seed.image.pullPolicy }}
+          command: ["sh", "/scripts/seed.sh"]
+          volumeMounts:
+            - name: seed-script
+              mountPath: /scripts
+      volumes:
+        - name: seed-script
+          configMap:
+            name: scim-server-seed
+            defaultMode: 0755
+{{- end }}
